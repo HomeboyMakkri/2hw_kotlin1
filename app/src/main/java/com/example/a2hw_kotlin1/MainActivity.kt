@@ -1,5 +1,6 @@
 package com.example.a2hw_kotlin1
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -16,17 +17,14 @@ import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
-import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalConfiguration
 
 // API Interface
 interface GiphyApi {
@@ -55,20 +53,20 @@ class MainActivity : ComponentActivity() {
 // Composable function for the app
 @Composable
 fun GiphyApp() {
-    // State for holding the list of images and loading state
-    var images by remember { mutableStateOf<List<String>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) } // New state for error message
+    // Состояние для хранения списка изображений, состояния загрузки и сообщения об ошибке
+    var images by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
+    var isLoading by rememberSaveable { mutableStateOf(false) }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    // Function to fetch a random GIF
+    // Функция для загрузки случайного GIF
     fun fetchRandomGif() {
         scope.launch {
             isLoading = true
-            errorMessage = null // Reset error message
+            errorMessage = null // Сбрасываем сообщение об ошибке
             try {
-                val gifUrl = fetchGifFromApi() // Fetch URL of the GIF
-                images = images + gifUrl // Add the new URL to the list of images
+                val gifUrl = fetchGifFromApi() // Загружаем URL GIF
+                images = images + gifUrl // Добавляем новый URL в список изображений
             } catch (e: Exception) {
                 errorMessage = "Failed to load GIF"
             } finally {
@@ -77,13 +75,17 @@ fun GiphyApp() {
         }
     }
 
-    // Layout for displaying the button, loading indicator, and images
+    // Получаем информацию о текущей ориентации экрана
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    // Разметка для отображения кнопки, индикатора загрузки и изображений
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier.fillMaxSize()
     ) {
-        // Button to fetch a random GIF
+        // Кнопка для получения случайного GIF
         Button(
             onClick = { fetchRandomGif() },
             modifier = Modifier.padding(16.dp)
@@ -91,20 +93,19 @@ fun GiphyApp() {
             Text("Get Random Gif")
         }
 
-        // Show loading indicator while fetching
+        // Показать индикатор загрузки, если идет загрузка
         if (isLoading) {
             CircularProgressIndicator()
         } else {
-            // Show error message if the fetch fails
+            // Показать сообщение об ошибке, если загрузка не удалась
             errorMessage?.let {
                 Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
             }
 
-
-            // Show all fetched GIFs
-            LazyColumn(
+            // Отображаем все загруженные GIF в сетке
+            LazyVerticalGrid(
+                columns = if (isLandscape) GridCells.Fixed(2) else GridCells.Fixed(1),
                 contentPadding = PaddingValues(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(images) { gifUrl ->
@@ -114,7 +115,8 @@ fun GiphyApp() {
                         contentDescription = "Random GIF",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(250.dp)  // Можно настроить высоту, чтобы гифки не были слишком большими
+                            .height(250.dp)  // Настройте высоту изображений
+                            .padding(4.dp)   // Добавляем отступы между картинками
                     )
                 }
             }
